@@ -1,0 +1,554 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>항공·호텔 서비스직 AI역량검사 체험판</title>
+  <style>
+    :root{
+      --bg:#0b1324;
+      --card:#111a31;
+      --line:#263252;
+      --text:#e8eeff;
+      --sub:#9fb0dd;
+      --pri:#5ea1ff;
+      --ok:#2fd17f;
+      --warn:#ffcf5a;
+    }
+    *{box-sizing:border-box}
+    body{
+      margin:0;background:linear-gradient(160deg,#081022,#0b1324 45%,#0d1730);
+      color:var(--text);font-family: "Noto Sans KR","Malgun Gothic",sans-serif;
+      min-height:100vh;
+    }
+    .wrap{max-width:1080px;margin:30px auto;padding:0 16px 40px}
+    .title{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
+    h1{margin:0;font-size:28px}
+    .badge{font-size:12px;padding:6px 10px;border:1px solid var(--line);border-radius:999px;color:var(--sub)}
+    .card{
+      margin-top:16px;background:rgba(17,26,49,.85);border:1px solid var(--line);
+      border-radius:16px;padding:18px;
+    }
+    .muted{color:var(--sub);font-size:14px;line-height:1.55}
+    .row{display:flex;gap:10px;flex-wrap:wrap}
+    .col{flex:1 1 240px}
+    label{display:block;font-size:14px;color:var(--sub);margin:8px 0 6px}
+    input,select,textarea,button{
+      width:100%;border:1px solid var(--line);background:#0d1630;color:var(--text);
+      border-radius:10px;padding:10px 12px;font-size:14px;
+    }
+    textarea{min-height:110px;resize:vertical}
+    button{
+      cursor:pointer;background:linear-gradient(120deg,#3c7cff,#4d90ff);border:none;font-weight:700;
+      transition:.15s transform;
+    }
+    button:hover{transform:translateY(-1px)}
+    button.ghost{
+      background:#0d1630;border:1px solid var(--line);font-weight:600
+    }
+    .stepper{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+    .step{
+      font-size:12px;border:1px solid var(--line);padding:6px 10px;border-radius:999px;color:var(--sub)
+    }
+    .step.active{border-color:#5ea1ff;color:#dbe8ff;background:#17305e}
+    .qbox{padding:14px;border:1px solid var(--line);border-radius:12px;margin:10px 0}
+    .q{font-weight:600;line-height:1.5}
+    .likert{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-top:10px}
+    .likert button{padding:8px;font-size:12px;background:#132145;border:1px solid #2f4a87}
+    .likert button.sel{background:#2a4f99}
+    .opt{margin-top:8px;display:grid;gap:8px}
+    .opt button{background:#132145;border:1px solid #2f4a87;text-align:left}
+    .timer{
+      display:inline-block;padding:6px 10px;border-radius:999px;font-weight:700;
+      background:#1a2f5d;border:1px solid #355ba6;margin-left:8px
+    }
+    .grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+    .pill{
+      display:inline-block;font-size:12px;padding:4px 8px;border:1px solid var(--line);border-radius:999px;color:var(--sub)
+    }
+    .hidden{display:none !important}
+    .hr{height:1px;background:var(--line);margin:12px 0}
+    .score{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+    .bar{
+      background:#0e1a38;border:1px solid #2b3f74;border-radius:10px;padding:10px
+    }
+    .bar-top{display:flex;justify-content:space-between;font-size:13px;color:#d8e3ff}
+    .track{margin-top:6px;height:10px;background:#0b1326;border-radius:999px;overflow:hidden;border:1px solid #213059}
+    .fill{height:100%;background:linear-gradient(90deg,#4e8dff,#2fd17f)}
+    .kpi{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+    .k{
+      border:1px solid var(--line);border-radius:12px;padding:12px;background:#0f1a37
+    }
+    .k .n{font-size:24px;font-weight:800}
+    .footerNote{font-size:12px;color:#8fa2d7;line-height:1.5}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="title">
+      <h1>항공·호텔 서비스직 AI역량검사 체험판</h1>
+      <span class="badge">교육용 시뮬레이터 · 브라우저 단독 실행</span>
+    </div>
+
+    <div class="stepper" id="stepper"></div>
+
+    <section class="card" id="screen"></section>
+  </div>
+
+<script>
+const app = {
+  step: 0,
+  steps: ["안내/설정","인성(성향)","상황판단(SJT)","인지과제","면접답변","결과리포트"],
+  profile: {},
+  answers: { personality:{}, sjt:{}, cog:{}, interview:{} },
+  timer: null,
+  tLeft: 0,
+  data: {
+    personality: [
+      {id:"P1", dim:"service", q:"고객이 불만을 제기할 때, 먼저 감정을 안정시키는 표현을 사용한다."},
+      {id:"P2", dim:"ethics", q:"규정에 어긋나는 요청은 상황이 급해도 허용하지 않는다."},
+      {id:"P3", dim:"stress", q:"예상치 못한 변수(지연, 오버부킹)가 생겨도 침착함을 유지한다."},
+      {id:"P4", dim:"team", q:"동료의 업무 과부하를 보면 먼저 지원 여부를 묻는다."},
+      {id:"P5", dim:"comm", q:"복잡한 안내사항을 고객 눈높이에 맞게 간단히 전달할 수 있다."},
+      {id:"P6", dim:"problem", q:"문제 발생 시 원인과 대안을 구조적으로 정리하는 편이다."},
+      {id:"P7", dim:"service", q:"고객의 말투/표정에서 숨은 니즈를 파악하려고 노력한다."},
+      {id:"P8", dim:"ethics", q:"작은 실수라도 사실대로 보고하고 재발방지 조치를 고민한다."},
+      {id:"P9", dim:"stress", q:"피크타임에도 우선순위를 정해 업무 속도를 유지한다."},
+      {id:"P10", dim:"team", q:"교대근무/부서간 인수인계에서 핵심 정보를 빠짐없이 남긴다."}
+    ],
+    sjt: [
+      {
+        id:"S1", dim:"service",
+        q:"항공편 지연으로 탑승객이 강하게 항의합니다. 가장 적절한 첫 대응은?",
+        options:[
+          {t:"규정상 어쩔 수 없다고 짧게 설명하고 다음 고객을 받는다.", s:1},
+          {t:"불편에 공감 표현 후, 현재 가능한 대안(식사권/재예약/연결편)을 우선 제시한다.", s:5},
+          {t:"상급자 호출 전까지 기다려 달라고만 안내한다.", s:2},
+          {t:"지연 원인을 길게 설명하며 이해를 요청한다.", s:3}
+        ]
+      },
+      {
+        id:"S2", dim:"ethics",
+        q:"지인이 객실 업그레이드를 요청하며 내부 편의를 부탁합니다.",
+        options:[
+          {t:"개인적 관계를 고려해 가능한 선에서 우선 처리한다.", s:1},
+          {t:"공식 절차/가용 정책을 안내하고 공정 기준을 지킨다.", s:5},
+          {t:"일단 처리 후 나중에 보고한다.", s:1},
+          {t:"직접 거절하지 않고 동료에게 넘긴다.", s:2}
+        ]
+      },
+      {
+        id:"S3", dim:"team",
+        q:"체크인 카운터가 혼잡한데 옆 동료가 초과 업무로 지쳐 보입니다.",
+        options:[
+          {t:"내 줄만 빨리 처리한다.", s:1},
+          {t:"짧게 상황 공유 후 역할을 재분담해 대기열을 분산한다.", s:5},
+          {t:"상황을 지켜보다가 요청 오면 돕는다.", s:3},
+          {t:"관리자 지시가 있을 때까지 현상 유지한다.", s:2}
+        ]
+      },
+      {
+        id:"S4", dim:"problem",
+        q:"VIP 고객의 수하물이 미도착 상태입니다. 가장 우선할 행동은?",
+        options:[
+          {t:"분실 가능성을 먼저 안내하고 보상 절차부터 설명한다.", s:2},
+          {t:"추적 시스템 확인-도착 예상-임시 지원물품 제공-후속연락 약속 순서로 진행한다.", s:5},
+          {t:"수하물 팀 연결만 하고 종료한다.", s:2},
+          {t:"고객이 진정될 때까지 대기한다.", s:1}
+        ]
+      },
+      {
+        id:"S5", dim:"comm",
+        q:"외국인 고객에게 환승 동선을 안내해야 합니다.",
+        options:[
+          {t:"빠르게 한국어로 설명하고 지도만 건넨다.", s:1},
+          {t:"짧은 문장+핵심 키워드+손짓/지도 표시로 단계별 확인하며 설명한다.", s:5},
+          {t:"번역 앱 문장만 보여준다.", s:3},
+          {t:"다른 직원에게 전적으로 넘긴다.", s:2}
+        ]
+      }
+    ],
+    interviewPrompts: [
+      "최근 6개월 내 고객 응대에서 갈등을 해결한 경험을 STAR 구조(상황-과제-행동-결과)로 답변하세요.",
+      "항공/호텔 현장에서 규정 준수와 고객 만족이 충돌할 때, 본인의 판단 기준을 설명하세요."
+    ],
+    words: ["gate","crew","delay","upgrade","boarding","service","safety","baggage","check-in","lounge"]
+  }
+};
+
+function renderStepper(){
+  const el = document.getElementById("stepper");
+  el.innerHTML = app.steps.map((s,i)=>`<span class="step ${i===app.step?'active':''}">${i+1}. ${s}</span>`).join("");
+}
+
+function setScreen(html){
+  document.getElementById("screen").innerHTML = html;
+  renderStepper();
+}
+
+function nextStep(){ app.step++; route(); }
+function prevStep(){ app.step=Math.max(0,app.step-1); route(); }
+
+function startTimer(sec, cb){
+  clearInterval(app.timer);
+  app.tLeft = sec;
+  const tEl = ()=>document.getElementById("timer");
+  const draw = ()=>{
+    const m = String(Math.floor(app.tLeft/60)).padStart(2,'0');
+    const s = String(app.tLeft%60).padStart(2,'0');
+    if(tEl()) tEl().textContent = `${m}:${s}`;
+  };
+  draw();
+  app.timer = setInterval(()=>{
+    app.tLeft--;
+    draw();
+    if(app.tLeft<=0){
+      clearInterval(app.timer);
+      cb && cb();
+    }
+  },1000);
+}
+
+function route(){
+  if(app.step===0) return screenIntro();
+  if(app.step===1) return screenPersonality();
+  if(app.step===2) return screenSJT();
+  if(app.step===3) return screenCognitive();
+  if(app.step===4) return screenInterview();
+  if(app.step===5) return screenResult();
+}
+
+function screenIntro(){
+  setScreen(`
+    <div class="muted">본 검사는 교육용 체험판입니다. 실제 기업 전형과 문항/채점 방식이 동일하지 않습니다. 학생들이 직무 적합형 평가 흐름을 연습하도록 설계되었습니다.</div>
+    <div class="hr"></div>
+    <div class="row">
+      <div class="col"><label>성명</label><input id="name" placeholder="홍길동"></div>
+      <div class="col"><label>학번/ID</label><input id="sid" placeholder="2677001"></div>
+      <div class="col"><label>희망직무 트랙</label>
+        <select id="track">
+          <option value="airline">항공 서비스</option>
+          <option value="hotel">호텔 서비스</option>
+        </select>
+      </div>
+    </div>
+    <div class="row">
+      <div class="col"><label>학과/반</label><input id="dept" value="관광서비스계열"></div>
+      <div class="col"><label>응시일</label><input id="date" type="date"></div>
+    </div>
+    <div class="hr"></div>
+    <div class="footerNote">구성: 인성(10문항) + 상황판단(5문항) + 인지과제(기억·계산·주의집중) + 구조화 면접(2문항). 총 소요 약 20~30분.</div>
+    <div class="row" style="margin-top:12px">
+      <button onclick="saveIntro()">검사 시작</button>
+    </div>
+  `);
+  document.getElementById("date").value = new Date().toISOString().slice(0,10);
+}
+function saveIntro(){
+  const p = {
+    name: document.getElementById("name").value.trim(),
+    sid: document.getElementById("sid").value.trim(),
+    track: document.getElementById("track").value,
+    dept: document.getElementById("dept").value.trim(),
+    date: document.getElementById("date").value
+  };
+  if(!p.name || !p.sid){ alert("성명과 학번/ID를 입력하세요."); return; }
+  app.profile = p;
+  nextStep();
+}
+
+function screenPersonality(){
+  const qs = app.data.personality;
+  let html = `<div class="muted">각 문항에 대해 본인과 가장 가까운 선택지를 고르세요. (1 전혀 아니다 ~ 5 매우 그렇다)</div>`;
+  qs.forEach((it,idx)=>{
+    const v = app.answers.personality[it.id] || 0;
+    html += `
+      <div class="qbox">
+        <div class="q">${idx+1}. ${it.q}</div>
+        <div class="likert">
+          ${[1,2,3,4,5].map(n=>`<button class="${v===n?'sel':''}" onclick="setLikert('${it.id}',${n})">${n}</button>`).join("")}
+        </div>
+      </div>`;
+  });
+  html += `<div class="row"><button class="ghost" onclick="prevStep()">이전</button><button onclick="submitPersonality()">다음</button></div>`;
+  setScreen(html);
+}
+function setLikert(id,n){
+  app.answers.personality[id]=n;
+  screenPersonality();
+}
+function submitPersonality(){
+  const total = app.data.personality.length;
+  const done = Object.keys(app.answers.personality).length;
+  if(done<total){ alert(`미응답 문항이 있습니다. (${done}/${total})`); return; }
+  nextStep();
+}
+
+let sjtIndex = 0;
+function screenSJT(){
+  const items = app.data.sjt;
+  const it = items[sjtIndex];
+  const picked = app.answers.sjt[it.id];
+  setScreen(`
+    <div class="row" style="justify-content:space-between;align-items:center">
+      <div class="pill">상황판단 ${sjtIndex+1} / ${items.length}</div>
+      <div>문항 제한시간<span class="timer" id="timer">00:00</span></div>
+    </div>
+    <div class="qbox" style="margin-top:12px">
+      <div class="q">${it.q}</div>
+      <div class="opt">
+        ${it.options.map((o,i)=>`<button onclick="pickSJT(${i})" class="${picked===i?'sel':''}">${String.fromCharCode(65+i)}. ${o.t}</button>`).join("")}
+      </div>
+    </div>
+    <div class="row">
+      <button class="ghost" onclick="prevStep()">이전</button>
+      <button onclick="nextSJT()">다음 문항</button>
+    </div>
+  `);
+  startTimer(45, ()=>{
+    if(app.answers.sjt[it.id]===undefined) app.answers.sjt[it.id]=0;
+    nextSJT();
+  });
+}
+function pickSJT(i){
+  const id = app.data.sjt[sjtIndex].id;
+  app.answers.sjt[id]=i;
+  screenSJT();
+}
+function nextSJT(){
+  clearInterval(app.timer);
+  sjtIndex++;
+  if(sjtIndex>=app.data.sjt.length){ nextStep(); return; }
+  screenSJT();
+}
+
+let cogState = { phase: 0, memSeq: [], memInput: "", mathQ: [], mathIdx:0, mathScore:0, attIdx:0, attScore:0 };
+function screenCognitive(){
+  if(cogState.phase===0) return cogMemory();
+  if(cogState.phase===1) return cogMath();
+  return cogAttention();
+}
+function cogMemory(){
+  const len = 6;
+  if(cogState.memSeq.length===0){
+    cogState.memSeq = Array.from({length:len},()=>app.data.words[Math.floor(Math.random()*app.data.words.length)]);
+  }
+  setScreen(`
+    <div class="muted">[기억 과제] 아래 단어 ${len}개를 12초간 기억하세요.</div>
+    <div class="qbox"><div class="q">${cogState.memSeq.join("  ·  ")}</div></div>
+    <div class="row"><button class="ghost" onclick="prevStep()">이전</button><button onclick="hideMem()">가림 후 입력</button></div>
+  `);
+}
+function hideMem(){
+  setScreen(`
+    <div class="row" style="justify-content:space-between;align-items:center">
+      <div class="pill">기억 과제 입력</div><div>입력 제한시간<span class="timer" id="timer">00:00</span></div>
+    </div>
+    <label style="margin-top:12px">기억나는 단어를 공백으로 구분해 입력</label>
+    <input id="mem" placeholder="예: gate service baggage ...">
+    <div class="row" style="margin-top:10px"><button onclick="submitMem()">제출</button></div>
+  `);
+  startTimer(30, submitMem);
+}
+function submitMem(){
+  clearInterval(app.timer);
+  const txt = (document.getElementById("mem")?.value || "").trim().toLowerCase();
+  const arr = txt.split(/\s+/).filter(Boolean);
+  const key = new Set(cogState.memSeq);
+  let hit = 0;
+  arr.forEach(w=>{ if(key.has(w)) hit++; });
+  app.answers.cog.memory = Math.min(100, Math.round((hit / cogState.memSeq.length)*100));
+  cogState.phase = 1;
+  screenCognitive();
+}
+function cogMath(){
+  if(cogState.mathQ.length===0){
+    cogState.mathQ = Array.from({length:8},()=>{
+      const a = Math.floor(Math.random()*70)+10;
+      const b = Math.floor(Math.random()*40)+5;
+      const op = Math.random()>0.5?"+":"-";
+      const ans = op==="+"?a+b:a-b;
+      return {q:`${a} ${op} ${b} = ?`, a:ans};
+    });
+  }
+  const q = cogState.mathQ[cogState.mathIdx];
+  setScreen(`
+    <div class="row" style="justify-content:space-between;align-items:center">
+      <div class="pill">계산 과제 ${cogState.mathIdx+1} / ${cogState.mathQ.length}</div>
+      <div>문항 제한시간<span class="timer" id="timer">00:00</span></div>
+    </div>
+    <div class="qbox"><div class="q" style="font-size:22px">${q.q}</div></div>
+    <input id="mathAns" type="number" placeholder="정답 입력">
+    <div class="row" style="margin-top:10px"><button onclick="submitMath()">제출</button></div>
+  `);
+  startTimer(12, submitMath);
+}
+function submitMath(){
+  clearInterval(app.timer);
+  const q = cogState.mathQ[cogState.mathIdx];
+  const v = Number(document.getElementById("mathAns")?.value);
+  if(v===q.a) cogState.mathScore++;
+  cogState.mathIdx++;
+  if(cogState.mathIdx>=cogState.mathQ.length){
+    app.answers.cog.math = Math.round((cogState.mathScore/cogState.mathQ.length)*100);
+    cogState.phase = 2;
+    screenCognitive();
+    return;
+  }
+  cogMath();
+}
+function cogAttention(){
+  const stream = "ABACADAEAFAGAHAIAJAKALAMANAOAP".split("");
+  const cur = stream[cogState.attIdx];
+  setScreen(`
+    <div class="muted">[주의집중 과제] 글자가 <b>A가 아닐 때만</b> 버튼을 누르세요.</div>
+    <div class="qbox"><div class="q" style="font-size:42px;text-align:center;letter-spacing:4px">${cur || "완료"}</div></div>
+    <div class="row"><button onclick="pressAttention()">반응</button></div>
+  `);
+  if(!cur){
+    app.answers.cog.attention = Math.round((cogState.attScore/stream.length)*100);
+    setTimeout(()=>nextStep(), 400);
+    return;
+  }
+  setTimeout(()=>autoAttention(stream), 700);
+}
+function pressAttention(){
+  const stream = "ABACADAEAFAGAHAIAJAKALAMANAOAP".split("");
+  const cur = stream[cogState.attIdx];
+  if(cur!=="A") cogState.attScore++;
+}
+function autoAttention(stream){
+  cogState.attIdx++;
+  if(cogState.attIdx<=stream.length) cogAttention();
+}
+
+function screenInterview(){
+  const p = app.data.interviewPrompts;
+  setScreen(`
+    <div class="muted">구조화 면접 답변을 입력하세요. 키워드/구조 기반으로 기초 점수를 산출합니다.</div>
+    <div class="qbox">
+      <div class="q">1) ${p[0]}</div>
+      <textarea id="iv1" placeholder="상황/과제/행동/결과 순서로 작성"></textarea>
+    </div>
+    <div class="qbox">
+      <div class="q">2) ${p[1]}</div>
+      <textarea id="iv2" placeholder="판단 기준과 실제 대응 방식을 작성"></textarea>
+    </div>
+    <div class="row">
+      <button class="ghost" onclick="prevStep()">이전</button>
+      <button onclick="submitInterview()">결과 보기</button>
+    </div>
+  `);
+}
+function submitInterview(){
+  const a = document.getElementById("iv1").value.trim();
+  const b = document.getElementById("iv2").value.trim();
+  if(!a || !b){ alert("두 문항 모두 작성하세요."); return; }
+  app.answers.interview.iv1 = a;
+  app.answers.interview.iv2 = b;
+  nextStep();
+}
+
+function scoreAll(){
+  const dims = {service:0, ethics:0, stress:0, team:0, comm:0, problem:0};
+  const cnt = {service:0, ethics:0, stress:0, team:0, comm:0, problem:0};
+
+  app.data.personality.forEach(q=>{
+    const v = Number(app.answers.personality[q.id]||3);
+    dims[q.dim]+=v*20; cnt[q.dim]++;
+  });
+  Object.keys(dims).forEach(k=>dims[k]=cnt[k]?Math.round(dims[k]/cnt[k]):50);
+
+  app.data.sjt.forEach(q=>{
+    const idx = app.answers.sjt[q.id];
+    const s = (idx===undefined || idx===0)?40:q.options[idx].s*20;
+    dims[q.dim] = Math.round((dims[q.dim]*0.6)+(s*0.4));
+  });
+
+  const mem = app.answers.cog.memory || 50;
+  const math = app.answers.cog.math || 50;
+  const att = app.answers.cog.attention || 50;
+  const cog = Math.round((mem+math+att)/3);
+  dims.problem = Math.round((dims.problem*0.7)+(cog*0.3));
+  dims.stress = Math.round((dims.stress*0.8)+(att*0.2));
+
+  const iv = (app.answers.interview.iv1 + " " + app.answers.interview.iv2).toLowerCase();
+  const kw = ["상황","과제","행동","결과","규정","안전","공정","대안","소통","협업","우선순위","재발방지"];
+  let hit = 0; kw.forEach(k=>{ if(iv.includes(k)) hit++; });
+  const ivScore = Math.min(100, 35 + hit*5 + Math.min(20, Math.floor(iv.length/40)));
+  dims.comm = Math.round((dims.comm*0.75)+(ivScore*0.25));
+  dims.ethics = Math.round((dims.ethics*0.8)+(ivScore*0.2));
+
+  const total = Math.round((dims.service+dims.ethics+dims.stress+dims.team+dims.comm+dims.problem)/6);
+  return {dims, cog:{mem,math,att,cog}, ivScore, total};
+}
+
+function level(n){ if(n>=80) return "우수"; if(n>=65) return "양호"; if(n>=50) return "보통"; return "보완필요"; }
+
+function screenResult(){
+  const s = scoreAll();
+  const rec = [];
+  if(s.dims.service<65) rec.push("고객 공감 표현 + 대안 제시를 30초 내 말하는 롤플레이 훈련");
+  if(s.dims.ethics<65) rec.push("규정-예외-보고 체계를 사례별로 정리한 의사결정 훈련");
+  if(s.dims.comm<65) rec.push("핵심 결론→근거→확인 질문 순서의 브리핑 연습");
+  if(s.cog.cog<65) rec.push("2주간 일일 10분 계산/기억/집중 루틴");
+  if(rec.length===0) rec.push("현재 역량 유지 + 실제 면접 STAR 답변 5개 사전 준비");
+
+  setScreen(`
+    <div class="kpi">
+      <div class="k"><div class="muted">종합 점수</div><div class="n">${s.total}</div><div>${level(s.total)}</div></div>
+      <div class="k"><div class="muted">인지과제 평균</div><div class="n">${s.cog.cog}</div><div>${level(s.cog.cog)}</div></div>
+      <div class="k"><div class="muted">면접답변 점수</div><div class="n">${s.ivScore}</div><div>${level(s.ivScore)}</div></div>
+    </div>
+
+    <div class="hr"></div>
+    <div class="score">
+      ${bar("고객지향", s.dims.service)}
+      ${bar("윤리·규정준수", s.dims.ethics)}
+      ${bar("스트레스 대응", s.dims.stress)}
+      ${bar("협업", s.dims.team)}
+      ${bar("커뮤니케이션", s.dims.comm)}
+      ${bar("문제해결", s.dims.problem)}
+    </div>
+
+    <div class="hr"></div>
+    <div class="qbox">
+      <div class="q">개선 권고</div>
+      <ul>${rec.map(x=>`<li>${x}</li>`).join("")}</ul>
+    </div>
+
+    <div class="row">
+      <button class="ghost" onclick="downloadResult()">결과 JSON 다운로드</button>
+      <button onclick="location.reload()">새 응시 시작</button>
+    </div>
+
+    <div class="footerNote" style="margin-top:8px">
+      응시자: ${app.profile.name} (${app.profile.sid}) / 트랙: ${app.profile.track==="airline"?"항공":"호텔"} / 응시일: ${app.profile.date}
+    </div>
+  `);
+}
+function bar(name,val){
+  return `<div class="bar">
+    <div class="bar-top"><span>${name}</span><span>${val}</span></div>
+    <div class="track"><div class="fill" style="width:${Math.max(0,Math.min(100,val))}%"></div></div>
+  </div>`;
+}
+function downloadResult(){
+  const payload = {
+    profile: app.profile,
+    answers: app.answers,
+    scoredAt: new Date().toISOString(),
+    result: scoreAll()
+  };
+  const blob = new Blob([JSON.stringify(payload,null,2)],{type:"application/json"});
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = `ai_assessment_${app.profile.sid || "student"}.json`;
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+
+route();
+</script>
+</body>
+</html>
