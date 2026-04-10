@@ -8,10 +8,10 @@
     :root{--bg:#0b1324;--card:#111a31;--line:#263252;--text:#e8eeff;--sub:#9fb0dd;--pri:#5ea1ff;}
     *{box-sizing:border-box}
     body{margin:0;background:linear-gradient(160deg,#081022,#0b1324 45%,#0d1730);color:var(--text);font-family:"Noto Sans KR","Malgun Gothic",sans-serif}
-    .wrap{max-width:980px;margin:24px auto;padding:0 16px 40px}
-    h1{margin:0 0 10px;font-size:26px}
+    .wrap{max-width:1080px;margin:24px auto;padding:0 16px 40px}
+    h1{margin:0;font-size:27px}
     .card{margin-top:12px;background:rgba(17,26,49,.9);border:1px solid var(--line);border-radius:14px;padding:16px}
-    .muted{color:var(--sub);font-size:14px}
+    .muted{color:var(--sub);font-size:14px;line-height:1.5}
     .row{display:flex;gap:10px;flex-wrap:wrap}
     .col{flex:1 1 240px}
     label{display:block;font-size:13px;color:var(--sub);margin:8px 0 6px}
@@ -19,240 +19,261 @@
     textarea{min-height:100px}
     button{cursor:pointer;background:linear-gradient(120deg,#3c7cff,#4d90ff);border:none;font-weight:700}
     button.ghost{background:#0d1630;border:1px solid var(--line)}
+    .stepper{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+    .step{font-size:12px;border:1px solid var(--line);padding:6px 10px;border-radius:999px;color:var(--sub)}
+    .step.active{border-color:#5ea1ff;color:#dbe8ff;background:#17305e}
     .qbox{padding:12px;border:1px solid var(--line);border-radius:10px;margin-top:10px}
+    .q{font-weight:600;line-height:1.45}
     .likert{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-top:8px}
     .likert button{background:#132145;border:1px solid #2f4a87}
-    .likert button.sel{background:#2a4f99}
+    .likert button.sel,.opt button.sel{background:#2a4f99}
+    .opt{display:grid;gap:8px;margin-top:8px}
+    .opt button{background:#132145;border:1px solid #2f4a87;text-align:left}
     .kpi{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
     .k{border:1px solid var(--line);border-radius:10px;padding:12px;background:#0f1a37}
     .n{font-size:24px;font-weight:800}
     .bar{border:1px solid #2b3f74;border-radius:10px;padding:10px;background:#0e1a38;margin-top:8px}
     .track{margin-top:6px;height:10px;background:#0b1326;border-radius:999px;overflow:hidden;border:1px solid #213059}
     .fill{height:100%;background:linear-gradient(90deg,#4e8dff,#2fd17f)}
+    .timer{display:inline-block;padding:5px 10px;border-radius:999px;background:#1a2f5d;border:1px solid #355ba6;margin-left:8px}
   </style>
 </head>
 <body>
-  <div class="wrap">
-    <h1>항공·호텔 서비스직 AI역량검사 체험판</h1>
-    <section id="screen" class="card"></section>
-  </div>
+<div class="wrap">
+  <h1>항공·호텔 서비스직 AI역량검사 체험판</h1>
+  <div id="stepper" class="stepper"></div>
+  <section id="screen" class="card"></section>
+</div>
 
 <script>
 const SHEET_WEBAPP_URL = "https://script.google.com/macros/s/AKfycbwDo3mmebkSoZdhtWx2uacMUZdgYYm_XppdciQyTfzFsyhmE0mY6w14EUGyyK1HwkMbkA/exec";
 
 const app = {
-  step: 0,
-  saved: false,
-  profile: {},
-  answers: { personality: {}, interview: {} },
-  data: {
-    personality: [
-      {id:"P1",dim:"service",q:"고객 불만 상황에서 먼저 공감 표현을 한다."},
-      {id:"P2",dim:"ethics",q:"규정 위반 요청은 관계와 무관하게 거절한다."},
-      {id:"P3",dim:"stress",q:"혼잡 상황에서도 침착하게 우선순위를 정한다."},
-      {id:"P4",dim:"team",q:"동료 과부하 시 자발적으로 업무를 분담한다."},
-      {id:"P5",dim:"comm",q:"복잡한 안내를 간결하게 전달할 수 있다."},
-      {id:"P6",dim:"problem",q:"문제 발생 시 원인-대안-후속조치를 구조화한다."}
-    ]
+  step:0, timer:null, tLeft:0, saved:false,
+  steps:["안내/설정","인성(10)","상황판단(5)","인지과제","면접답변","결과"],
+  profile:{},
+  answers:{personality:{}, sjt:{}, cog:{}, interview:{}},
+  data:{
+    personality:[
+      {id:"P1",dim:"service",q:"고객이 불만을 제기할 때 먼저 감정 안정 표현을 사용한다."},
+      {id:"P2",dim:"ethics",q:"규정에 어긋나는 요청은 급해도 허용하지 않는다."},
+      {id:"P3",dim:"stress",q:"예상치 못한 변수(지연/오버부킹)에서도 침착함을 유지한다."},
+      {id:"P4",dim:"team",q:"동료 과부하를 보면 먼저 지원 여부를 묻는다."},
+      {id:"P5",dim:"comm",q:"복잡한 안내를 고객 눈높이로 간단히 전달할 수 있다."},
+      {id:"P6",dim:"problem",q:"문제 발생 시 원인과 대안을 구조적으로 정리한다."},
+      {id:"P7",dim:"service",q:"고객의 표정/말투에서 숨은 니즈를 파악하려고 한다."},
+      {id:"P8",dim:"ethics",q:"작은 실수라도 사실대로 보고하고 재발 방지를 고민한다."},
+      {id:"P9",dim:"stress",q:"피크타임에도 우선순위를 정해 업무 속도를 유지한다."},
+      {id:"P10",dim:"team",q:"인수인계 시 핵심 정보를 빠짐없이 남긴다."}
+    ],
+    sjt:[
+      {id:"S1",dim:"service",q:"항공편 지연으로 고객이 강하게 항의합니다. 첫 대응은?",
+       options:[
+         {t:"규정상 어쩔 수 없다고 짧게 설명한다.",s:1},
+         {t:"불편 공감 후 가능한 대안(재예약/연결편/지원)을 우선 제시한다.",s:5},
+         {t:"상급자 올 때까지 기다려 달라고만 한다.",s:2},
+         {t:"지연 원인을 길게 설명하며 이해를 요청한다.",s:3}
+       ]},
+      {id:"S2",dim:"ethics",q:"지인이 객실 업그레이드를 부탁합니다.",
+       options:[
+         {t:"개인관계를 고려해 우선 처리한다.",s:1},
+         {t:"공식 절차와 공정 기준을 안내한다.",s:5},
+         {t:"일단 처리 후 사후 보고한다.",s:1},
+         {t:"직접 답변하지 않고 동료에게 넘긴다.",s:2}
+       ]},
+      {id:"S3",dim:"team",q:"체크인 카운터 혼잡, 옆 동료가 과부하 상태입니다.",
+       options:[
+         {t:"내 줄만 빠르게 처리한다.",s:1},
+         {t:"역할 재분담으로 대기열을 분산한다.",s:5},
+         {t:"요청 오면 돕는다.",s:3},
+         {t:"관리자 지시를 기다린다.",s:2}
+       ]},
+      {id:"S4",dim:"problem",q:"VIP 고객 수하물이 미도착입니다. 우선 행동은?",
+       options:[
+         {t:"보상 절차부터 설명한다.",s:2},
+         {t:"추적 확인→도착예상→임시지원→후속연락 순으로 진행한다.",s:5},
+         {t:"수하물 팀 연결만 하고 종료한다.",s:2},
+         {t:"고객이 진정될 때까지 대기한다.",s:1}
+       ]},
+      {id:"S5",dim:"comm",q:"외국인 고객에게 환승 동선을 안내해야 합니다.",
+       options:[
+         {t:"한국어로 빠르게 설명하고 지도만 준다.",s:1},
+         {t:"짧은 문장+핵심 키워드+지도 표시로 단계별 확인한다.",s:5},
+         {t:"번역 앱 문장만 보여준다.",s:3},
+         {t:"다른 직원에게 전적으로 넘긴다.",s:2}
+       ]}
+    ],
+    interview:[
+      "최근 6개월 내 고객 갈등 해결 경험을 STAR 구조(상황-과제-행동-결과)로 작성하세요.",
+      "규정 준수와 고객 만족이 충돌할 때 본인의 판단 기준을 작성하세요."
+    ],
+    words:["gate","crew","delay","upgrade","boarding","service","safety","baggage","checkin","lounge"]
   }
 };
 
-function setScreen(html){ document.getElementById("screen").innerHTML = html; }
+let sjtIdx=0;
+let cog={phase:0, memSeq:[], mathQ:[], mathIdx:0, mathScore:0, attIdx:0, attScore:0};
 
-function route(){
-  if(app.step===0) intro();
-  if(app.step===1) personality();
-  if(app.step===2) interview();
-  if(app.step===3) result();
+function renderStepper(){
+  const el=document.getElementById("stepper");
+  el.innerHTML=app.steps.map((s,i)=>`<span class="step ${i===app.step?'active':''}">${i+1}. ${s}</span>`).join("");
 }
+function setScreen(html){document.getElementById("screen").innerHTML=html;renderStepper();}
+function startTimer(sec, cb){
+  clearInterval(app.timer); app.tLeft=sec;
+  const tick=()=>{const m=String(Math.floor(app.tLeft/60)).padStart(2,'0');const s=String(app.tLeft%60).padStart(2,'0');const t=document.getElementById("timer");if(t)t.textContent=`${m}:${s}`;};
+  tick();
+  app.timer=setInterval(()=>{app.tLeft--;tick();if(app.tLeft<=0){clearInterval(app.timer);cb&&cb();}},1000);
+}
+function route(){ if(app.step===0)intro(); if(app.step===1)personality(); if(app.step===2)sjt(); if(app.step===3)cognitive(); if(app.step===4)interview(); if(app.step===5)result(); }
 
 function intro(){
   setScreen(`
     <div class="muted">교육용 체험판입니다. 실제 기업 전형과 동일하지 않습니다.</div>
     <div class="row">
-      <div class="col"><label>성명</label><input id="name" placeholder="홍길동"></div>
-      <div class="col"><label>학번</label><input id="sid" placeholder="20260001"></div>
-      <div class="col"><label>학과/반</label><input id="dept" value="관광서비스계열"></div>
+      <div class="col"><label>성명</label><input id="name"></div>
+      <div class="col"><label>학번/ID</label><input id="sid"></div>
+      <div class="col"><label>트랙</label><select id="track"><option value="airline">항공</option><option value="hotel">호텔</option></select></div>
     </div>
-    <div class="row">
-      <div class="col"><label>트랙</label>
-        <select id="track"><option value="airline">항공</option><option value="hotel">호텔</option></select>
-      </div>
-      <div class="col"><label>응시일</label><input id="date" type="date"></div>
-    </div>
-    <div class="row" style="margin-top:10px"><button onclick="saveIntro()">다음</button></div>
+    <div class="row"><div class="col"><label>응시일</label><input id="date" type="date"></div></div>
+    <div class="row" style="margin-top:10px"><button onclick="saveIntro()">검사 시작</button></div>
   `);
-  document.getElementById("date").value = new Date().toISOString().slice(0,10);
+  document.getElementById("date").value=new Date().toISOString().slice(0,10);
 }
-
 function saveIntro(){
-  const p = {
-    name: document.getElementById("name").value.trim(),
-    sid: document.getElementById("sid").value.trim(),
-    dept: document.getElementById("dept").value.trim(),
-    track: document.getElementById("track").value,
-    date: document.getElementById("date").value
-  };
-  if(!p.name || !p.sid){ alert("성명/학번은 필수입니다."); return; }
-  app.profile = p;
-  app.step = 1;
-  route();
+  const p={name:document.getElementById("name").value.trim(),sid:document.getElementById("sid").value.trim(),track:document.getElementById("track").value,date:document.getElementById("date").value};
+  if(!p.name||!p.sid){alert("성명/학번을 입력하세요.");return;}
+  app.profile=p; app.step=1; route();
 }
 
 function personality(){
-  const qs = app.data.personality;
-  let html = `<div class="muted">문항별로 1~5를 선택하세요.</div>`;
-  qs.forEach((q,i)=>{
-    const v = app.answers.personality[q.id] || 0;
-    html += `<div class="qbox"><div>${i+1}. ${q.q}</div>
-      <div class="likert">${[1,2,3,4,5].map(n=>`<button class="${v===n?'sel':''}" onclick="pick('${q.id}',${n})">${n}</button>`).join("")}</div>
-    </div>`;
+  let html=`<div class="muted">각 문항에 대해 1~5를 선택하세요.</div>`;
+  app.data.personality.forEach((q,i)=>{
+    const v=app.answers.personality[q.id]||0;
+    html+=`<div class="qbox"><div class="q">${i+1}. ${q.q}</div><div class="likert">${[1,2,3,4,5].map(n=>`<button class="${v===n?'sel':''}" onclick="pickLikert('${q.id}',${n})">${n}</button>`).join("")}</div></div>`;
   });
-  html += `<div class="row" style="margin-top:10px">
-    <button class="ghost" onclick="app.step=0;route()">이전</button>
-    <button onclick="toInterview()">다음</button>
-  </div>`;
+  html+=`<div class="row" style="margin-top:10px"><button class="ghost" onclick="app.step=0;route()">이전</button><button onclick="submitPersonality()">다음</button></div>`;
   setScreen(html);
 }
+function pickLikert(id,n){app.answers.personality[id]=n;personality();}
+function submitPersonality(){ if(Object.keys(app.answers.personality).length<app.data.personality.length){alert("미응답 문항이 있습니다.");return;} app.step=2; sjtIdx=0; route(); }
 
-function pick(id,n){ app.answers.personality[id]=n; personality(); }
-
-function toInterview(){
-  if(Object.keys(app.answers.personality).length < app.data.personality.length){
-    alert("인성 문항을 모두 응답하세요."); return;
-  }
-  app.step = 2;
-  route();
+function sjt(){
+  const it=app.data.sjt[sjtIdx], picked=app.answers.sjt[it.id];
+  setScreen(`
+    <div class="row" style="justify-content:space-between;align-items:center">
+      <div>상황판단 ${sjtIdx+1}/${app.data.sjt.length}</div><div>제한시간<span id="timer" class="timer">00:00</span></div>
+    </div>
+    <div class="qbox"><div class="q">${it.q}</div><div class="opt">${it.options.map((o,i)=>`<button class="${picked===i?'sel':''}" onclick="pickSjt(${i})">${String.fromCharCode(65+i)}. ${o.t}</button>`).join("")}</div></div>
+    <div class="row"><button class="ghost" onclick="app.step=1;route()">이전</button><button onclick="nextSjt()">다음</button></div>
+  `);
+  startTimer(45, ()=>{ if(app.answers.sjt[it.id]===undefined) app.answers.sjt[it.id]=0; nextSjt(); });
 }
+function pickSjt(i){const id=app.data.sjt[sjtIdx].id;app.answers.sjt[id]=i;sjt();}
+function nextSjt(){clearInterval(app.timer);sjtIdx++;if(sjtIdx>=app.data.sjt.length){app.step=3;route();return;}sjt();}
+
+function cognitive(){ if(cog.phase===0)return cogMem(); if(cog.phase===1)return cogMath(); return cogAtt(); }
+function cogMem(){
+  if(cog.memSeq.length===0) cog.memSeq=Array.from({length:6},()=>app.data.words[Math.floor(Math.random()*app.data.words.length)]);
+  setScreen(`<div class="muted">[기억 과제] 단어 6개를 기억하세요.</div><div class="qbox"><div class="q">${cog.memSeq.join(" · ")}</div></div><div class="row"><button onclick="hideMem()">가리고 입력</button></div>`);
+}
+function hideMem(){
+  setScreen(`<div>입력 제한시간<span id="timer" class="timer">00:00</span></div><input id="mem" placeholder="공백으로 구분 입력"><div class="row" style="margin-top:10px"><button onclick="submitMem()">제출</button></div>`);
+  startTimer(30, submitMem);
+}
+function submitMem(){
+  clearInterval(app.timer);
+  const arr=((document.getElementById("mem")?.value||"").toLowerCase().trim()).split(/\s+/).filter(Boolean);
+  const key=new Set(cog.memSeq); let hit=0; arr.forEach(w=>{if(key.has(w))hit++;});
+  app.answers.cog.memory=Math.min(100,Math.round((hit/cog.memSeq.length)*100)); cog.phase=1; cognitive();
+}
+function cogMath(){
+  if(cog.mathQ.length===0) cog.mathQ=Array.from({length:8},()=>{const a=Math.floor(Math.random()*70)+10,b=Math.floor(Math.random()*40)+5,op=Math.random()>0.5?"+":"-";return {q:`${a} ${op} ${b} = ?`,a:op==="+"?a+b:a-b};});
+  const q=cog.mathQ[cog.mathIdx];
+  setScreen(`<div>계산 ${cog.mathIdx+1}/${cog.mathQ.length}<span id="timer" class="timer">00:00</span></div><div class="qbox"><div class="q" style="font-size:24px">${q.q}</div></div><input id="ma" type="number"><div class="row" style="margin-top:10px"><button onclick="submitMath()">제출</button></div>`);
+  startTimer(12, submitMath);
+}
+function submitMath(){
+  clearInterval(app.timer);
+  const q=cog.mathQ[cog.mathIdx], v=Number(document.getElementById("ma")?.value);
+  if(v===q.a) cog.mathScore++;
+  cog.mathIdx++;
+  if(cog.mathIdx>=cog.mathQ.length){app.answers.cog.math=Math.round((cog.mathScore/cog.mathQ.length)*100);cog.phase=2;cognitive();return;}
+  cogMath();
+}
+function cogAtt(){
+  const s="ABACADAEAFAGAHAIAJAKALAMANAOAP".split(""), cur=s[cog.attIdx];
+  if(!cur){app.answers.cog.attention=Math.round((cog.attScore/s.length)*100);app.step=4;route();return;}
+  setScreen(`<div class="muted">[주의집중] A가 아닐 때만 반응</div><div class="qbox"><div class="q" style="font-size:44px;text-align:center">${cur}</div></div><div class="row"><button onclick="pressAtt()">반응</button></div>`);
+  setTimeout(()=>{cog.attIdx++;cogAtt();},700);
+}
+function pressAtt(){const s="ABACADAEAFAGAHAIAJAKALAMANAOAP".split("");if(s[cog.attIdx]!=="A")cog.attScore++;}
 
 function interview(){
-  setScreen(`
-    <div class="qbox">
-      <div><b>1)</b> 최근 갈등 해결 경험을 STAR(상황-과제-행동-결과)로 작성하세요.</div>
-      <textarea id="iv1" placeholder="상황/과제/행동/결과"></textarea>
-    </div>
-    <div class="qbox">
-      <div><b>2)</b> 규정 준수와 고객 만족이 충돌할 때 판단 기준을 작성하세요.</div>
-      <textarea id="iv2" placeholder="판단 기준 + 실제 대응"></textarea>
-    </div>
-    <div class="row" style="margin-top:10px">
-      <button class="ghost" onclick="app.step=1;route()">이전</button>
-      <button onclick="submitInterview()">결과 보기</button>
-    </div>
-  `);
+  const p=app.data.interview;
+  setScreen(`<div class="qbox"><div class="q">1) ${p[0]}</div><textarea id="iv1"></textarea></div><div class="qbox"><div class="q">2) ${p[1]}</div><textarea id="iv2"></textarea></div><div class="row"><button class="ghost" onclick="app.step=3;route()">이전</button><button onclick="submitInterview()">결과 보기</button></div>`);
 }
-
 function submitInterview(){
-  const iv1 = document.getElementById("iv1").value.trim();
-  const iv2 = document.getElementById("iv2").value.trim();
-  if(!iv1 || !iv2){ alert("면접답변 2개 모두 입력하세요."); return; }
-  app.answers.interview = {iv1, iv2};
-  app.step = 3;
-  app.saved = false;
-  route();
+  const iv1=document.getElementById("iv1").value.trim(), iv2=document.getElementById("iv2").value.trim();
+  if(!iv1||!iv2){alert("두 문항 모두 입력하세요.");return;}
+  app.answers.interview={iv1,iv2}; app.step=5; app.saved=false; route();
 }
 
 function scoreAll(){
-  const d={service:0,ethics:0,stress:0,team:0,comm:0,problem:0};
-  const c={service:0,ethics:0,stress:0,team:0,comm:0,problem:0};
-
-  app.data.personality.forEach(q=>{
-    const v=(Number(app.answers.personality[q.id]||3))*20;
-    d[q.dim]+=v; c[q.dim]++;
-  });
-  Object.keys(d).forEach(k=>d[k]=c[k]?Math.round(d[k]/c[k]):50);
-
-  const iv = ((app.answers.interview.iv1||"")+" "+(app.answers.interview.iv2||"")).toLowerCase();
-  const kw = ["상황","과제","행동","결과","규정","안전","공정","대안","소통","협업","우선순위","재발방지"];
-  let hit = 0; kw.forEach(k=>{ if(iv.includes(k)) hit++; });
-  const ivScore = Math.min(100, 35 + hit*5 + Math.min(20, Math.floor(iv.length/40)));
-
-  d.comm = Math.round(d.comm*0.75 + ivScore*0.25);
-  d.ethics = Math.round(d.ethics*0.8 + ivScore*0.2);
-
-  const cog = {mem:60, math:60, att:60, cog:60};
-  const total = Math.round((d.service+d.ethics+d.stress+d.team+d.comm+d.problem)/6);
-
-  return {dims:d, cog, ivScore, total};
+  const dims={service:0,ethics:0,stress:0,team:0,comm:0,problem:0}, cnt={service:0,ethics:0,stress:0,team:0,comm:0,problem:0};
+  app.data.personality.forEach(q=>{const v=Number(app.answers.personality[q.id]||3)*20;dims[q.dim]+=v;cnt[q.dim]++;});
+  Object.keys(dims).forEach(k=>dims[k]=cnt[k]?Math.round(dims[k]/cnt[k]):50);
+  app.data.sjt.forEach(q=>{const i=app.answers.sjt[q.id], s=(i===undefined||i===0)?40:q.options[i].s*20;dims[q.dim]=Math.round(dims[q.dim]*0.6+s*0.4);});
+  const mem=app.answers.cog.memory||50, math=app.answers.cog.math||50, att=app.answers.cog.attention||50, cogAvg=Math.round((mem+math+att)/3);
+  dims.problem=Math.round(dims.problem*0.7+cogAvg*0.3); dims.stress=Math.round(dims.stress*0.8+att*0.2);
+  const iv=((app.answers.interview.iv1||"")+" "+(app.answers.interview.iv2||"")).toLowerCase();
+  const kw=["상황","과제","행동","결과","규정","안전","공정","대안","소통","협업","우선순위","재발방지"]; let hit=0; kw.forEach(k=>{if(iv.includes(k))hit++;});
+  const ivScore=Math.min(100,35+hit*5+Math.min(20,Math.floor(iv.length/40)));
+  dims.comm=Math.round(dims.comm*0.75+ivScore*0.25); dims.ethics=Math.round(dims.ethics*0.8+ivScore*0.2);
+  const total=Math.round((dims.service+dims.ethics+dims.stress+dims.team+dims.comm+dims.problem)/6);
+  return {dims, cog:{mem,math,att,cog:cogAvg}, ivScore, total};
 }
-
-function level(n){ if(n>=80) return "우수"; if(n>=65) return "양호"; if(n>=50) return "보통"; return "보완필요"; }
-
-function bar(name,val){
-  return `<div class="bar"><div style="display:flex;justify-content:space-between"><span>${name}</span><span>${val}</span></div><div class="track"><div class="fill" style="width:${Math.max(0,Math.min(100,val))}%"></div></div></div>`;
-}
+function level(n){if(n>=80)return"우수";if(n>=65)return"양호";if(n>=50)return"보통";return"보완필요";}
+function bar(name,val){return `<div class="bar"><div style="display:flex;justify-content:space-between"><span>${name}</span><span>${val}</span></div><div class="track"><div class="fill" style="width:${Math.max(0,Math.min(100,val))}%"></div></div></div>`;}
 
 function result(){
-  const s = scoreAll();
-  const rec = [];
-  if(s.dims.service<65) rec.push("고객 공감 + 대안 제시 30초 롤플레이 반복");
-  if(s.dims.ethics<65) rec.push("규정-예외-보고 기준 사례 학습");
-  if(s.dims.comm<65) rec.push("결론→근거→확인 질문 순 브리핑 훈련");
-  if(rec.length===0) rec.push("현재 수준 유지 + STAR 답변 5개 사전 준비");
-
+  const s=scoreAll();
+  const rec=[]; if(s.dims.service<65)rec.push("고객 공감+대안 제시 롤플레이"); if(s.dims.ethics<65)rec.push("규정-예외-보고 기준 훈련"); if(s.dims.comm<65)rec.push("결론→근거→확인 질문 브리핑 연습"); if(s.cog.cog<65)rec.push("일일 10분 인지 루틴"); if(rec.length===0)rec.push("수준 유지 + STAR 답변 5개 준비");
   setScreen(`
     <div class="kpi">
       <div class="k"><div class="muted">종합</div><div class="n">${s.total}</div><div>${level(s.total)}</div></div>
-      <div class="k"><div class="muted">면접점수</div><div class="n">${s.ivScore}</div><div>${level(s.ivScore)}</div></div>
       <div class="k"><div class="muted">인지평균</div><div class="n">${s.cog.cog}</div><div>${level(s.cog.cog)}</div></div>
+      <div class="k"><div class="muted">면접점수</div><div class="n">${s.ivScore}</div><div>${level(s.ivScore)}</div></div>
     </div>
-    ${bar("고객지향",s.dims.service)}
-    ${bar("윤리·규정준수",s.dims.ethics)}
-    ${bar("스트레스 대응",s.dims.stress)}
-    ${bar("협업",s.dims.team)}
-    ${bar("커뮤니케이션",s.dims.comm)}
-    ${bar("문제해결",s.dims.problem)}
+    ${bar("고객지향",s.dims.service)}${bar("윤리·규정준수",s.dims.ethics)}${bar("스트레스 대응",s.dims.stress)}${bar("협업",s.dims.team)}${bar("커뮤니케이션",s.dims.comm)}${bar("문제해결",s.dims.problem)}
     <div class="qbox"><b>개선 권고</b><ul>${rec.map(x=>`<li>${x}</li>`).join("")}</ul></div>
-    <div class="row">
-      <button class="ghost" onclick="saveToGoogleSheet()">구글시트 저장</button>
-      <button class="ghost" onclick="downloadResult()">결과 JSON 다운로드</button>
-      <button onclick="location.reload()">새 응시</button>
-    </div>
+    <div class="row"><button class="ghost" onclick="downloadResult()">결과 JSON 다운로드</button><button onclick="location.reload()">새 응시</button></div>
   `);
-
-  if(!app.saved){
-    app.saved = true;
-    saveToGoogleSheet(true);
-  }
+  if(!app.saved){app.saved=true;saveToGoogleSheetAuto();}
 }
 
-async function saveToGoogleSheet(silent=false){
-  const payload = {
-    profile: app.profile,
-    answers: app.answers,
-    scoredAt: new Date().toISOString(),
-    result: scoreAll()
-  };
+async function saveToGoogleSheetAuto(){
+  const payload={profile:app.profile,answers:app.answers,scoredAt:new Date().toISOString(),result:scoreAll()};
+  const body = new URLSearchParams({ payload: JSON.stringify(payload) });
 
-  try{
-    const res = await fetch(SHEET_WEBAPP_URL, {
-      method:"POST",
-      headers:{"Content-Type":"application/json"},
-      body: JSON.stringify(payload)
-    });
-    const txt = await res.text();
-    let data = {};
-    try { data = JSON.parse(txt); } catch { data = {ok:false,message:txt}; }
-    if(!data.ok) throw new Error(data.message || "저장 실패");
-    if(!silent) alert("구글시트 저장 완료");
-  }catch(e){
-    if(!silent) alert("구글시트 저장 오류: " + e.message);
+  if (navigator.sendBeacon) {
+    const ok = navigator.sendBeacon(SHEET_WEBAPP_URL, body);
+    if (ok) return;
   }
+
+  try {
+    await fetch(SHEET_WEBAPP_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded;charset=UTF-8" },
+      body
+    });
+  } catch (_) {}
 }
 
 function downloadResult(){
-  const payload = {
-    profile: app.profile,
-    answers: app.answers,
-    scoredAt: new Date().toISOString(),
-    result: scoreAll()
-  };
-  const blob = new Blob([JSON.stringify(payload,null,2)],{type:"application/json"});
-  const a = document.createElement("a");
-  a.href = URL.createObjectURL(blob);
-  a.download = `ai_assessment_${app.profile.sid || "student"}.json`;
-  a.click();
-  URL.revokeObjectURL(a.href);
+  const payload={profile:app.profile,answers:app.answers,scoredAt:new Date().toISOString(),result:scoreAll()};
+  const blob=new Blob([JSON.stringify(payload,null,2)],{type:"application/json"});
+  const a=document.createElement("a"); a.href=URL.createObjectURL(blob); a.download=`ai_assessment_${app.profile.sid||"student"}.json`; a.click(); URL.revokeObjectURL(a.href);
 }
 
 route();
