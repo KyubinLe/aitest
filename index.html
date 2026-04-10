@@ -48,6 +48,37 @@
 <script>
 const SHEET_WEBAPP_URL = "https://script.google.com/macros/s/AKfycbwDo3mmebkSoZdhtWx2uacMUZdgYYm_XppdciQyTfzFsyhmE0mY6w14EUGyyK1HwkMbkA/exec";
 
+async function saveToGoogleSheetManual(){
+  const payload = {
+    profile: app.profile,
+    answers: app.answers,
+    scoredAt: new Date().toISOString(),
+    result: scoreAll()
+  };
+
+  const body = new URLSearchParams({
+    payload: JSON.stringify(payload)
+  });
+
+  try {
+    const res = await fetch(SHEET_WEBAPP_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded;charset=UTF-8" },
+      body
+    });
+
+    const txt = await res.text();
+    let data = {};
+    try { data = JSON.parse(txt); } catch { data = { ok: false, message: txt }; }
+
+    if (!data.ok) throw new Error(data.message || "저장 실패");
+    alert("구글시트 저장 완료");
+  } catch (e) {
+    alert("구글시트 저장 오류: " + e.message);
+  }
+}
+
+
 const app = {
   step:0, timer:null, tLeft:0, saved:false,
   steps:["안내/설정","인성(10)","상황판단(5)","인지과제","면접답변","결과"],
@@ -247,7 +278,7 @@ function result(){
     </div>
     ${bar("고객지향",s.dims.service)}${bar("윤리·규정준수",s.dims.ethics)}${bar("스트레스 대응",s.dims.stress)}${bar("협업",s.dims.team)}${bar("커뮤니케이션",s.dims.comm)}${bar("문제해결",s.dims.problem)}
     <div class="qbox"><b>개선 권고</b><ul>${rec.map(x=>`<li>${x}</li>`).join("")}</ul></div>
-    <div class="row"><button class="ghost" onclick="downloadResult()">결과 JSON 다운로드</button><button onclick="location.reload()">새 응시</button></div>
+    <div class="row"><button onclick="saveToGoogleSheetManual()">구글시트 저장</button><button class="ghost" onclick="downloadResult()">결과 JSON 다운로드</button><button onclick="location.reload()">새 응시</button></div>
   `);
   if(!app.saved){app.saved=true;saveToGoogleSheetAuto();}
 }
